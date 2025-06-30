@@ -1,125 +1,109 @@
-"use client";
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Loader2, Wifi, WifiOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, CheckCircle, XCircle, Play } from "lucide-react";
+import api from "@/lib/api";
 
 interface TestResult {
   name: string;
-  url: string;
+  endpoint: string;
   status: "pending" | "success" | "error";
+  message: string;
+  duration?: number;
   data?: any;
-  error?: string;
-  responseTime?: number;
 }
 
-export default function ApiTester() {
-  const [tests, setTests] = useState<TestResult[]>([]);
+export const ApiTester: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
+  const [results, setResults] = useState<TestResult[]>([]);
 
-  const runApiTests = async () => {
+  const tests = [
+    {
+      name: "Health Check",
+      endpoint: "/health",
+      test: () => api.health(),
+    },
+    {
+      name: "Get Categories",
+      endpoint: "/categories",
+      test: () => api.categories.getAll(),
+    },
+    {
+      name: "Get Artworks",
+      endpoint: "/artworks",
+      test: () => api.artworks.getAll(),
+    },
+    {
+      name: "Dashboard Stats",
+      endpoint: "/dashboard/stats",
+      test: () => api.dashboard.getStats(),
+    },
+  ];
+
+  const runTests = async () => {
     setIsRunning(true);
-    setTests([]);
+    setResults([]);
 
-    // Test different possible endpoints
-    const testEndpoints = [
-      {
-        name: "Backend Root",
-        url: "https://artelouarrate-production.up.railway.app/",
-      },
-      {
-        name: "API Root",
-        url: "https://artelouarrate-production.up.railway.app/api",
-      },
-      {
-        name: "Categories",
-        url: "https://artelouarrate-production.up.railway.app/api/categories",
-      },
-      {
-        name: "Categories (no /api)",
-        url: "https://artelouarrate-production.up.railway.app/categories",
-      },
-      {
-        name: "Health Check",
-        url: "https://artelouarrate-production.up.railway.app/health",
-      },
-      {
-        name: "Health Check (with /api)",
-        url: "https://artelouarrate-production.up.railway.app/api/health",
-      },
-    ];
-
-    for (const endpoint of testEndpoints) {
+    for (const testCase of tests) {
       const startTime = Date.now();
 
-      setTests((prev) => [
+      // Add pending result
+      setResults((prev) => [
         ...prev,
         {
-          name: endpoint.name,
-          url: endpoint.url,
+          name: testCase.name,
+          endpoint: testCase.endpoint,
           status: "pending",
+          message: "Testing...",
         },
       ]);
 
       try {
-        const response = await fetch(endpoint.url, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        });
+        const data = await testCase.test();
+        const duration = Date.now() - startTime;
 
-        const responseTime = Date.now() - startTime;
-
-        if (response.ok) {
-          const data = await response.json();
-
-          setTests((prev) =>
-            prev.map((test) =>
-              test.name === endpoint.name
-                ? {
-                    ...test,
-                    status: "success" as const,
-                    data: data,
-                    responseTime,
-                  }
-                : test
-            )
-          );
-        } else {
-          setTests((prev) =>
-            prev.map((test) =>
-              test.name === endpoint.name
-                ? {
-                    ...test,
-                    status: "error" as const,
-                    error: `HTTP ${response.status}: ${response.statusText}`,
-                    responseTime,
-                  }
-                : test
-            )
-          );
-        }
-      } catch (error) {
-        const responseTime = Date.now() - startTime;
-
-        setTests((prev) =>
-          prev.map((test) =>
-            test.name === endpoint.name
+        // Update with success
+        setResults((prev) =>
+          prev.map((result) =>
+            result.name === testCase.name
               ? {
-                  ...test,
-                  status: "error" as const,
-                  error:
-                    error instanceof Error ? error.message : "Network error",
-                  responseTime,
+                  ...result,
+                  status: "success" as const,
+                  message: "Test passed successfully",
+                  duration,
+                  data,
                 }
-              : test
+              : result
+          )
+        );
+      } catch (error: any) {
+        const duration = Date.now() - startTime;
+
+        // Update with error
+        setResults((prev) =>
+          prev.map((result) =>
+            result.name === testCase.name
+              ? {
+                  ...result,
+                  status: "error" as const,
+                  message: error.message || "Test failed",
+                  duration,
+                }
+              : result
           )
         );
       }
+
+      // Small delay between tests
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     setIsRunning(false);
@@ -128,137 +112,168 @@ export default function ApiTester() {
   const getStatusIcon = (status: TestResult["status"]) => {
     switch (status) {
       case "pending":
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case "success":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "error":
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-500" />;
     }
   };
 
   const getStatusBadge = (status: TestResult["status"]) => {
     switch (status) {
       case "pending":
-        return (
-          <Badge className="bg-blue-500/20 text-blue-400">Testing...</Badge>
-        );
+        return <Badge variant="secondary">Running</Badge>;
       case "success":
         return (
-          <Badge className="bg-green-500/20 text-green-400">Success</Badge>
+          <Badge variant="success" className="bg-green-100 text-green-800">
+            Success
+          </Badge>
         );
       case "error":
-        return <Badge className="bg-red-500/20 text-red-400">Failed</Badge>;
+        return <Badge variant="destructive">Failed</Badge>;
     }
   };
 
+  const successCount = results.filter((r) => r.status === "success").length;
+  const errorCount = results.filter((r) => r.status === "error").length;
+  const totalTests = tests.length;
+
   return (
-    <Card className="bg-slate-800/50 border-slate-700">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-white flex items-center space-x-2">
-          <Wifi className="w-5 h-5 text-amber-400" />
-          <span>Backend API Endpoint Discovery</span>
+        <CardTitle className="flex items-center gap-2">
+          <Play className="h-5 w-5" />
+          API Endpoint Tester
         </CardTitle>
-        <p className="text-slate-400">
-          Testing different endpoint URLs to find what's available on your
-          backend
-        </p>
+        <CardDescription>
+          Test all API endpoints to verify backend connectivity and
+          functionality
+        </CardDescription>
       </CardHeader>
 
-      <CardContent>
-        <div className="space-y-4">
-          <Button
-            onClick={runApiTests}
-            disabled={isRunning}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-          >
+      <CardContent className="space-y-4">
+        {/* Controls */}
+        <div className="flex items-center justify-between">
+          <Button onClick={runTests} disabled={isRunning} className="gap-2">
             {isRunning ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Testing Endpoints...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Wifi className="w-4 h-4 mr-2" />
-                Discover Available Endpoints
-              </>
+              <Play className="h-4 w-4" />
             )}
+            {isRunning ? "Running Tests..." : "Run All Tests"}
           </Button>
 
-          {tests.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-white font-semibold">Test Results:</h3>
-
-              {tests.map((test, index) => (
-                <div key={index} className="p-3 bg-slate-700/50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(test.status)}
-                      <span className="text-white font-medium">
-                        {test.name}
-                      </span>
-                      {getStatusBadge(test.status)}
-                    </div>
-
-                    {test.responseTime && (
-                      <span className="text-slate-400 text-sm">
-                        {test.responseTime}ms
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-slate-400 mb-2">{test.url}</div>
-
-                  {test.error && (
-                    <div className="text-red-400 text-sm">
-                      Error: {test.error}
-                    </div>
-                  )}
-
-                  {test.data && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-slate-300 hover:text-white text-sm">
-                        View Response Data
-                      </summary>
-                      <pre className="mt-2 p-2 bg-slate-900 rounded text-xs text-slate-300 overflow-auto max-h-32">
-                        {JSON.stringify(test.data, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              ))}
-
-              {/* Summary */}
-              {tests.length > 0 && !isRunning && (
-                <div className="mt-4 p-4 rounded-lg bg-slate-800/50">
-                  {tests.some((test) => test.status === "success") ? (
-                    <div className="text-green-400">
-                      <CheckCircle className="w-5 h-5 inline mr-2" />
-                      <span className="font-semibold">
-                        Found working endpoints!
-                      </span>
-                      <div className="text-sm text-slate-300 mt-1">
-                        The working endpoints show us what your backend API
-                        structure is.
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-red-400">
-                      <WifiOff className="w-5 h-5 inline mr-2" />
-                      <span className="font-semibold">
-                        No working endpoints found
-                      </span>
-                      <div className="text-sm text-slate-300 mt-1">
-                        Your backend might be using different routes or might
-                        not be running.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+          {results.length > 0 && (
+            <div className="flex gap-2">
+              <Badge variant="outline" className="gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                {successCount} passed
+              </Badge>
+              <Badge variant="outline" className="gap-1">
+                <XCircle className="h-3 w-3 text-red-500" />
+                {errorCount} failed
+              </Badge>
+              <Badge variant="outline">
+                {results.length}/{totalTests} completed
+              </Badge>
             </div>
           )}
         </div>
+
+        {/* Results Summary */}
+        {results.length > 0 && (
+          <Alert
+            className={`${
+              successCount === totalTests
+                ? "border-green-500 bg-green-50"
+                : errorCount > 0
+                ? "border-red-500 bg-red-50"
+                : "border-blue-500 bg-blue-50"
+            }`}
+          >
+            <AlertDescription>
+              {isRunning && (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>
+                    Running API tests... ({results.length}/{totalTests})
+                  </span>
+                </div>
+              )}
+              {!isRunning && successCount === totalTests && (
+                <div className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>All tests passed! Backend is fully functional.</span>
+                </div>
+              )}
+              {!isRunning && errorCount > 0 && (
+                <div className="flex items-center gap-2 text-red-700">
+                  <XCircle className="h-4 w-4" />
+                  <span>
+                    {errorCount} test{errorCount > 1 ? "s" : ""} failed. Check
+                    the backend server status.
+                  </span>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Test Results */}
+        <div className="space-y-3">
+          {results.map((result, index) => (
+            <div
+              key={result.name}
+              className="flex items-center justify-between p-4 border rounded-lg bg-gray-50"
+            >
+              <div className="flex items-center gap-3">
+                {getStatusIcon(result.status)}
+                <div>
+                  <p className="font-medium">{result.name}</p>
+                  <p className="text-sm text-gray-600">
+                    {result.endpoint}
+                    {result.duration && (
+                      <span className="ml-2 text-gray-400">
+                        ({result.duration}ms)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {getStatusBadge(result.status)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Results */}
+        {results.some((r) => r.status === "error") && (
+          <div className="space-y-2">
+            <h4 className="font-medium text-red-700">Error Details:</h4>
+            {results
+              .filter((r) => r.status === "error")
+              .map((result) => (
+                <div
+                  key={result.name}
+                  className="p-3 bg-red-50 border border-red-200 rounded"
+                >
+                  <p className="text-sm font-medium text-red-800">
+                    {result.name}
+                  </p>
+                  <p className="text-sm text-red-600">{result.message}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    Endpoint: {result.endpoint}
+                  </p>
+                </div>
+              ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
-}
+};
+
+export default ApiTester;

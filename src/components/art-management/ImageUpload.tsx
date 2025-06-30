@@ -166,7 +166,7 @@ const ImageUpload = ({
                 !target.src.includes("/api/images/")
               ) {
                 const filename = preview.split("/").pop();
-                target.src = `http://localhost:3000/api/images/${filename}`;
+                target.src = `https://artelouarrate-production.up.railway.app/api/images/${filename}`;
               }
             }}
           />

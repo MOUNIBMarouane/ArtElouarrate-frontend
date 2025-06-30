@@ -34,7 +34,7 @@ export const useImageUpload = () => {
       
       console.log('useImageUpload: Token found:', !!token, 'artworkId:', artworkId);
 
-      const response = await fetch('http://localhost:3000/api/upload/image', {
+      const response = await fetch('https://artelouarrate-production.up.railway.app/api/upload/image', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,7 +84,7 @@ export const useImageUpload = () => {
       const userToken = localStorage.getItem('userToken');
       const token = adminToken || userToken;
 
-      const response = await fetch(`http://localhost:3000/api/upload/image/${imageId}`, {
+      const response = await fetch(`https://artelouarrate-production.up.railway.app/api/upload/image/${imageId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -127,7 +127,7 @@ export const useImageUpload = () => {
       const userToken = localStorage.getItem('userToken');
       const token = adminToken || userToken;
 
-      const response = await fetch(`http://localhost:3000/api/upload/image/${imageId}`, {
+      const response = await fetch(`https://artelouarrate-production.up.railway.app/api/upload/image/${imageId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,4 +1,3 @@
-"use client";
 import { Button } from "@/components/ui/button";
 import {
   Palette,
@@ -12,7 +11,7 @@ import {
   Layers,
   Eye,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 
 const ArtistHero = () => {
@@ -61,7 +60,7 @@ const ArtistHero = () => {
                 <span className="bg-gradient-to-r from-gray-200 via-white to-gray-300 bg-clip-text text-transparent">
                   ELOUARATE
                 </span>
-
+                
                 <br />
                 <span className="text-white">ART</span>
               </h1>
@@ -137,7 +136,7 @@ const ArtistHero = () => {
 
             {/* Enhanced Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-6">
-              <Link href="/ma3rid">
+              <Link to="/ma3rid">
                 <Button
                   size="lg"
                   className="group bg-gradient-to-r from-gray-200 to-white hover:from-white hover:to-gray-100 text-black font-bold px-10 py-4 rounded-full shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:scale-105"
@@ -148,7 +147,7 @@ const ArtistHero = () => {
                 </Button>
               </Link>
 
-              <Link href="/profile">
+              <Link to="/profile">
                 <Button
                   size="lg"
                   className="group border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm px-10 py-4 rounded-full font-bold transition-all duration-300 transform hover:scale-105"

@@ -124,7 +124,7 @@ const AdminSettingsSection = () => {
       setPasswordLoading(true);
 
       const response = await fetch(
-        "http://localhost:3000/api/auth/admin/change-password",
+        "https://artelouarrate-production.up.railway.app/api/auth/admin/change-password",
         {
           method: "POST",
           headers: {

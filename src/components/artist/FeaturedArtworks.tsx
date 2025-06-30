@@ -1,9 +1,8 @@
-"use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Eye, Heart } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useArtworks } from "@/hooks/useArtworks";
 import { getImageUrl } from "@/lib/utils";
 import ImageWithFallbackPublic from "@/components/ImageWithFallbackPublic";
@@ -131,7 +130,7 @@ const FeaturedArtworks = () => {
         )}
 
         <div className="text-center">
-          <Link href="/artwork">
+          <Link to="/artwork">
             <Button
               size="lg"
               className="bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-700 hover:to-rose-700 text-white px-8 py-3 rounded-full"

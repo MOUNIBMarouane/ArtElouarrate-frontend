@@ -1,5 +1,3 @@
-"use client";
-
 import React, {
   createContext,
   useContext,
@@ -7,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { authApi } from "@/lib/api";
+import api from "@/lib/api";
 
 interface User {
   id: string;
@@ -15,7 +13,7 @@ interface User {
   lastName: string;
   email: string;
   phone?: string;
-  role?: "USER" | "ADMIN";
+  role: "USER" | "ADMIN";
   createdAt: string;
 }
 
@@ -45,28 +43,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Helper function to safely access localStorage (for SSR compatibility)
-const getLocalStorage = (key: string): string | null => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem(key);
-  }
-  return null;
-};
-
-// Helper function to safely set localStorage (for SSR compatibility)
-const setLocalStorage = (key: string, value: string): void => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(key, value);
-  }
-};
-
-// Helper function to safely remove from localStorage (for SSR compatibility)
-const removeLocalStorage = (key: string): void => {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(key);
-  }
-};
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,8 +52,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is authenticated on app start
   useEffect(() => {
     const initAuth = async () => {
-      const token = getLocalStorage("userToken");
-      const userInfo = getLocalStorage("userInfo");
+      const token = localStorage.getItem("userToken");
+      const userInfo = localStorage.getItem("userInfo");
 
       if (token && userInfo) {
         try {
@@ -97,15 +73,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await authApi.login({ email, password });
+      const response = await api.auth.login({ email, password });
 
       // Handle both response structures: direct data or nested data
       const responseData = (response.data as any)?.data || response.data;
       const { token, user: userData } = responseData;
 
       // Store auth data
-      setLocalStorage("userToken", token);
-      setLocalStorage("userInfo", JSON.stringify(userData));
+      localStorage.setItem("userToken", token);
+      localStorage.setItem("userInfo", JSON.stringify(userData));
 
       setUser(userData as User);
     } catch (error) {
@@ -115,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: RegisterData): Promise<void> => {
     try {
-      const response = await authApi.register(userData);
+      const response = await api.auth.register(userData);
       console.log("Registration response:", response);
 
       // Handle the response format from our backend
@@ -127,9 +103,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Store auth data
-      setLocalStorage("userToken", token);
-      setLocalStorage("userInfo", JSON.stringify(newUser));
-      setLocalStorage("isUserAuthenticated", "true");
+      localStorage.setItem("userToken", token);
+      localStorage.setItem("userInfo", JSON.stringify(newUser));
+      localStorage.setItem("isUserAuthenticated", "true");
 
       setUser(newUser as User);
     } catch (error) {
@@ -140,16 +116,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = (): void => {
     // Clear local storage
-    removeLocalStorage("userToken");
-    removeLocalStorage("userInfo");
-    removeLocalStorage("isUserAuthenticated");
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userInfo");
+    localStorage.removeItem("isUserAuthenticated");
 
     // Clear user state
     setUser(null);
 
     // Optionally call logout endpoint
     try {
-      authApi.logout();
+      api.auth.logout();
     } catch (error) {
       console.error("Logout API call failed:", error);
     }
@@ -160,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // This would call a profile update endpoint when implemented
       const updatedUser = { ...user, ...data } as User;
       setUser(updatedUser);
-      setLocalStorage("userInfo", JSON.stringify(updatedUser));
+      localStorage.setItem("userInfo", JSON.stringify(updatedUser));
     } catch (error) {
       throw error;
     }
@@ -169,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshToken = async (): Promise<void> => {
     try {
       // This would refresh the JWT token when implemented
-      const response = await authApi.getProfile();
+      const response = await api.auth.me();
       const responseData = (response.data as any)?.data || response.data;
       setUser(responseData as User);
     } catch (error) {

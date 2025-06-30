@@ -1,97 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api, { Artwork } from '@/lib/api';
 import { ArtworkWithCategory } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 
-interface ArtworkImage {
-  url: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-export interface ArtworkDetails {
-  id: string;
-  title?: string;
-  name?: string;
-  description: string;
-  price: number;
-  image?: string;
-  images?: ArtworkImage[];
-  category: Category;
-  categoryId?: number;
-  medium?: string;
-  dimensions?: string;
-  createdYear?: string;
-  featured?: boolean;
-  sold?: boolean;
-  isActive?: boolean;
-  isFeatured?: boolean;
-  viewCount?: number;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-interface UseArtworksOptions {
-  categoryId?: string | null;
-  featured?: boolean;
-  limit?: number;
-}
-
-// Fetch all artworks
-export const useArtworks = (searchTerm: string = '', options?: UseArtworksOptions) => {
+export const useArtworks = (searchTerm?: string) => {
   return useQuery({
-    queryKey: ['artworks', searchTerm, options],
+    queryKey: ['artworks', searchTerm],
     queryFn: async () => {
-      // Build query params
-      const params = new URLSearchParams();
-      
-      if (options?.categoryId) {
-        params.append('category', options.categoryId);
-      }
-      
-      if (options?.featured) {
-        params.append('featured', 'true');
-      }
-      
-      if (options?.limit) {
-        params.append('limit', options.limit.toString());
-      }
-      
-      const queryString = params.toString() ? `?${params.toString()}` : '';
-      
-      const response = await fetch(`/api/artworks${queryString}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch artworks');
-      }
-      
-      return await response.json() as ArtworkDetails[];
+      const response = await api.artworks.getAll(searchTerm);
+      console.log('🔍 useArtworks - API Response:', response);
+      // The API returns { data: { artworks: [...] } }
+      return response.data?.artworks as ArtworkWithCategory[] || [];
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-};
-
-// Get a single artwork by ID
-export const useArtwork = (id: string) => {
-  return useQuery({
-    queryKey: ['artwork', id],
-    queryFn: async () => {
-      if (!id) return null;
-      
-      const response = await fetch(`/api/artworks/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch artwork');
-      }
-      
-      return await response.json() as ArtworkDetails;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: !!id, // Only run the query if there's an ID
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -100,25 +24,26 @@ export const useAddArtwork = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (artwork: Partial<ArtworkDetails>) => {
+    mutationFn: async (artwork: Omit<Artwork, 'id' | 'created_at' | 'updated_at'>) => {
       const response = await api.artworks.create(artwork);
-      return response.data as any;
+      console.log('🔍 useAddArtwork - API Response:', response);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artworks'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({
-        title: 'Success',
-        description: 'Artwork added successfully.',
-        variant: 'default',
+        title: "Artwork created",
+        description: "New artwork has been successfully added.",
       });
     },
     onError: (error) => {
-      console.error('Error adding artwork:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to add artwork. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to create artwork. Please try again.",
+        variant: "destructive",
       });
+      console.error('Error creating artwork:', error);
     },
   });
 };
@@ -128,24 +53,37 @@ export const useUpdateArtwork = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ArtworkDetails> }) => {
-      const response = await api.artworks.update(id, data);
-      return response.data as any;
+    mutationFn: async ({ id, artwork }: { id: string; artwork: any }) => {
+      console.log('🔍 useUpdateArtwork - Updating artwork:', { id, artwork });
+      const response = await api.artworks.update(id, artwork);
+      console.log('🔍 useUpdateArtwork - API Response:', response);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artworks'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({
-        title: 'Success',
-        description: 'Artwork updated successfully.',
-        variant: 'default',
+        title: "Artwork updated",
+        description: "Artwork has been successfully updated.",
       });
     },
-    onError: (error) => {
-      console.error('Error updating artwork:', error);
+    onError: (error: any) => {
+      console.error('❌ Error updating artwork:', error);
+      
+      let errorMessage = "Failed to update artwork. Please try again.";
+      
+      if (error?.response?.status === 404) {
+        errorMessage = "Artwork not found. It may have been deleted.";
+      } else if (error?.response?.status === 400) {
+        errorMessage = "Invalid artwork data. Please check all fields.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: 'Error',
-        description: 'Failed to update artwork. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
     },
   });
@@ -157,24 +95,22 @@ export const useDeleteArtwork = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.artworks.delete(id);
-      return response.data as any;
+      await api.artworks.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artworks'] });
       toast({
-        title: 'Success',
-        description: 'Artwork deleted successfully.',
-        variant: 'default',
+        title: "Artwork deleted",
+        description: "Artwork has been successfully removed.",
       });
     },
     onError: (error) => {
-      console.error('Error deleting artwork:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete artwork. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to delete artwork. Please try again.",
+        variant: "destructive",
       });
+      console.error('Error deleting artwork:', error);
     },
   });
 };

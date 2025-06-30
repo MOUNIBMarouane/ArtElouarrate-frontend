@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Palette, Brush, Image, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -40,7 +40,7 @@ const HeroSection = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/artwork">
+              <Link to="/artwork">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"

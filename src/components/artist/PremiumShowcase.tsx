@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Sparkles, Eye, Heart, ShoppingCart } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 const PremiumShowcase = () => {
   const premiumArtworks = [
@@ -190,7 +190,7 @@ const PremiumShowcase = () => {
         {/* Call to Action */}
         <div className="text-center">
           <div className="inline-flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <Link href="/artwork">
+            <Link to="/artwork">
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
