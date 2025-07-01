@@ -1,20 +1,19 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY bun.lockb ./
+COPY package.json bun.lockb ./
 
 # Install dependencies
-RUN npm ci --omit=dev --silent
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN bun run build
 
 # Production stage
 FROM nginx:alpine AS production
@@ -29,4 +28,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 # Start nginx
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["nginx", "-g", "daemon off;"]

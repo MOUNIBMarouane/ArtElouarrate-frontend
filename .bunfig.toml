@@ -1,0 +1,12 @@
+[install]
+# Don't install devDependencies in production
+production = false
+
+# Use faster registry
+registry = "https://registry.npmjs.org"
+
+# Disable telemetry
+telemetry = false
+
+# Cache configuration  
+cache = true 

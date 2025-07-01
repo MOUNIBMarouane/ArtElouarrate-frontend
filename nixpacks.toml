@@ -1,15 +1,16 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci --omit=dev && npm run build"
+buildCommand = "bun install --frozen-lockfile && bun run build"
 
 [deploy]
-startCommand = "npm run preview"
+startCommand = "bun run preview"
 healthcheckPath = "/"
-healthcheckTimeout = 30
+healthcheckTimeout = 300
 
 [env]
 NODE_ENV = "production"
 NODE_VERSION = "18"
+BUN_VERSION = "1.0.0"
 
 [networking]
 serviceDomain = "artelouarrate-frontend"
