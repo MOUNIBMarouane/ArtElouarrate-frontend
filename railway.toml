@@ -1,9 +1,9 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "bun install && bun run build:railway"
+buildCommand = "npm install && npm run build:railway"
 
 [deploy]
-startCommand = "npx vite preview --port $PORT --host 0.0.0.0"
+startCommand = "npm run preview"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
@@ -12,7 +12,6 @@ restartPolicyMaxRetries = 10
 [env]
 NODE_ENV = "production"
 NODE_VERSION = "18"
-BUN_VERSION = "1.2.11"
 NODE_OPTIONS = "--max-old-space-size=4096"
 
 [networking]
