@@ -1,15 +1,19 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+buildCommand = "bun install && bun run build:railway"
 
 [deploy]
 startCommand = "npm run preview"
+healthcheckPath = "/"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [env]
 NODE_ENV = "production"
-VITE_API_URL = "https://artelouarate-backend-production.up.railway.app"
+NODE_VERSION = "18"
+BUN_VERSION = "1.2.11"
+NODE_OPTIONS = "--max-old-space-size=4096"
 
-[build.env]
-NODE_OPTIONS = "--max-old-space-size=4096" 
+[networking]
+serviceDomain = "artelouarrate-frontend"
