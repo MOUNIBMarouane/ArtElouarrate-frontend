@@ -8,8 +8,25 @@ export const useCategories = () => {
     queryFn: async () => {
       const response = await api.categories.getAll();
       console.log('🔍 useCategories - API Response:', response);
-      // The API returns { data: { categories: [...] } }
-      return response.data?.categories as Category[] || [];
+      
+      // Handle different response structures from backend
+      let categories = [];
+      if (response.data?.categories) {
+        // Structure: { data: { categories: [...] } }
+        categories = response.data.categories;
+      } else if (Array.isArray(response.data)) {
+        // Structure: { data: [...] }
+        categories = response.data;
+      } else if (response.success && Array.isArray(response.data)) {
+        // Structure: { success: true, data: [...] }
+        categories = response.data;
+      } else if (Array.isArray(response)) {
+        // Direct array
+        categories = response;
+      }
+      
+      console.log('🔍 Processed categories:', categories);
+      return categories as Category[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

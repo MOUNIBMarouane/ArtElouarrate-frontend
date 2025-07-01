@@ -31,94 +31,26 @@ const AdminLogin = () => {
   const [hasAdmin, setHasAdmin] = useState<boolean | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
   const navigate = useNavigate();
 
   // Check if admin exists on component mount
   useEffect(() => {
-    checkAdminExists();
+    // Skip admin existence check - just show login form
+    // Admin already exists with credentials: admin@elouarate.com / Admin123!
+    setHasAdmin(true);
+    setShowRegister(false);
+    setCheckingAdmin(false);
   }, []);
 
-  // Check if admin exists
-  const checkAdminExists = async () => {
-    try {
-      setCheckingAdmin(true);
-      const response = await fetch(
-        "https://artelouarrate-production.up.railway.app/api/auth/admin/exists"
-      );
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setHasAdmin(data.data.hasAdmin);
-        setShowRegister(!data.data.hasAdmin); // Show register form if no admin exists
-      } else {
-        console.error("Failed to check admin existence:", data);
-        // If API call fails, show login form by default
-        setHasAdmin(true);
-        setShowRegister(false);
-      }
-    } catch (error) {
-      console.error("Error checking admin existence:", error);
-      // If network error, show login form by default
-      setHasAdmin(true);
-      setShowRegister(false);
-    } finally {
-      setCheckingAdmin(false);
-    }
-  };
-
-  // Admin registration
+  // Admin registration (disabled - admin already exists)
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    if (registerData.password !== registerData.confirmPassword) {
-      alert("Passwords do not match!");
-      setIsLoading(false);
-      return;
-    }
-
-    if (registerData.password.length < 8) {
-      alert("Password must be at least 8 characters long!");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        "https://artelouarrate-production.up.railway.app/api/auth/admin/setup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: registerData.username,
-            email: registerData.email,
-            password: registerData.password,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        localStorage.setItem("isAdminAuthenticated", "true");
-        localStorage.setItem("adminToken", data.data.accessToken);
-        localStorage.setItem("adminRefreshToken", data.data.refreshToken);
-        localStorage.setItem("adminUser", JSON.stringify(data.data.admin));
-
-        console.log("✅ Admin created and logged in:", data.data.admin);
-        alert("🎉 Admin account created successfully! You are now logged in.");
-        navigate("/admin");
-      } else {
-        alert(data.message || "Setup failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("Admin setup error:", error);
-      alert("Connection error. Make sure the backend is running on port 3000.");
-    }
-
-    setIsLoading(false);
+    alert(
+      "Admin registration is not available. Please use the existing admin account."
+    );
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -127,19 +59,18 @@ const AdminLogin = () => {
 
     try {
       // Try to login with the new admin system
-      const loginResponse = await fetch(
-        "https://artelouarrate-production.up.railway.app/api/auth/admin/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
-        }
-      );
+      const API_BASE =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const loginResponse = await fetch(`${API_BASE}/admin/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password,
+        }),
+      });
 
       const loginData = await loginResponse.json();
 
@@ -185,29 +116,62 @@ const AdminLogin = () => {
     }));
   };
 
-  // Check admin existence on component mount
-  useEffect(() => {
-    checkAdminExists();
-  }, []);
+  // Handle forgot password
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setResetMessage("");
+
+    try {
+      const API_BASE =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const response = await fetch(`${API_BASE}/admin/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: forgotPasswordEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setResetMessage(
+          "Password reset email sent! Check your inbox for instructions."
+        );
+        setShowForgotPassword(false);
+      } else {
+        setResetMessage(
+          data.message || "Failed to send reset email. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      setResetMessage("Connection error. Please try again later.");
+    }
+
+    setIsLoading(false);
+  };
 
   const handle2FAVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        "https://artelouarrate-production.up.railway.app/api/auth/admin/2fa/verify-login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tempToken: tempToken,
-            code: twoFactorCode,
-          }),
-        }
-      );
+      const API_BASE =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const response = await fetch(`${API_BASE}/admin/2fa/verify-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tempToken: tempToken,
+          code: twoFactorCode,
+        }),
+      });
 
       const data = await response.json();
 
@@ -229,17 +193,7 @@ const AdminLogin = () => {
     setIsLoading(false);
   };
 
-  // Show loading while checking admin existence
-  if (checkingAdmin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Checking system status...</p>
-        </div>
-      </div>
-    );
-  }
+  // Removed loading check since we're not checking admin existence
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
@@ -257,28 +211,18 @@ const AdminLogin = () => {
             <Palette className="h-8 w-8 text-purple-600" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">ELOUARATE ART</h1>
-          <p className="text-purple-200">
-            {hasAdmin === false
-              ? "Admin Setup Required"
-              : "Admin Dashboard Access"}
-          </p>
+          <p className="text-purple-200">Admin Dashboard Access</p>
         </div>
 
         {/* Registration/Login Card */}
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-6">
             <CardTitle className="text-2xl font-bold text-center text-gray-900">
-              {show2FA
-                ? "Two-Factor Authentication"
-                : hasAdmin === false && showRegister
-                ? "Create Admin Account"
-                : "Welcome Back"}
+              {show2FA ? "Two-Factor Authentication" : "Welcome Back"}
             </CardTitle>
             <CardDescription className="text-center text-gray-600">
               {show2FA
                 ? "Enter the 6-digit code from your authenticator app"
-                : hasAdmin === false && showRegister
-                ? "Set up the first admin account for your system"
                 : "Sign in to access the admin dashboard"}
             </CardDescription>
           </CardHeader>
@@ -286,8 +230,8 @@ const AdminLogin = () => {
           <CardContent>
             {!show2FA ? (
               <div>
-                {/* Show Registration Form if no admin exists */}
-                {hasAdmin === false && showRegister ? (
+                {/* Registration form removed - admin already exists */}
+                {showRegister ? (
                   <div>
                     <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <div className="flex items-center">
@@ -489,15 +433,84 @@ const AdminLogin = () => {
                     </Button>
 
                     <div className="text-center">
-                      <Link
-                        to="/admin/forgot-password"
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
                         className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >
                         Forgot your password?
-                      </Link>
+                      </button>
                     </div>
                   </form>
                 )}
+              </div>
+            ) : showForgotPassword ? (
+              // Forgot Password Form
+              <div>
+                <form onSubmit={handleForgotPassword} className="space-y-6">
+                  <div className="text-center mb-6">
+                    <div className="p-3 bg-blue-100 rounded-full w-fit mx-auto mb-4">
+                      <Lock className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Reset Password
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Enter your email address and we'll send you a reset link
+                    </p>
+                  </div>
+
+                  {resetMessage && (
+                    <div
+                      className={`p-3 rounded-md text-sm ${
+                        resetMessage.includes("sent")
+                          ? "bg-green-100 text-green-700 border border-green-300"
+                          : "bg-red-100 text-red-700 border border-red-300"
+                      }`}
+                    >
+                      {resetMessage}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="forgotEmail" className="text-gray-700">
+                      Email Address
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="forgotEmail"
+                        type="email"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        placeholder="Enter your email address"
+                        className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Sending Reset Link..." : "Send Reset Link"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setForgotPasswordEmail("");
+                      setResetMessage("");
+                    }}
+                  >
+                    Back to Login
+                  </Button>
+                </form>
               </div>
             ) : (
               <div>

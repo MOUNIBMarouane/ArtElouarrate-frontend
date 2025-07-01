@@ -75,15 +75,33 @@ const HorizontalCategoriesSection = () => {
     );
   }
 
-  // Filter categories that have artworks
-  const categoriesWithArtworks = categories.filter(
-    (category) =>
-      artworksByCategory[category.id] &&
-      artworksByCategory[category.id].length > 0
-  );
+  // Show all categories, even if they don't have artworks yet
+  const categoriesWithArtworks = categories.length > 0 ? categories : [];
 
-  if (categoriesWithArtworks.length === 0) {
-    return null;
+  // Don't show the section if no categories exist at all
+  if (categories.length === 0 && !categoriesLoading) {
+    return (
+      <section className="py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500/10 rounded-full border border-amber-500/20 mb-8">
+            <span className="text-2xl">🎨</span>
+            <span className="text-amber-400 font-semibold text-sm tracking-wide uppercase">
+              Categories
+            </span>
+          </div>
+          <h2 className="text-4xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+            Explore by
+            <span className="block bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent mt-2">
+              Category
+            </span>
+          </h2>
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed mb-8">
+            Categories will appear here once they are added.
+          </p>
+          <div className="text-slate-500">No categories available yet.</div>
+        </div>
+      </section>
+    );
   }
 
   return (
