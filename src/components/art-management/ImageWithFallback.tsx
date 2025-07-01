@@ -1,245 +1,139 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
+import { UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Upload, AlertCircle, ImageIcon, RefreshCw } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
-import { useUpdateArtwork } from "@/hooks/useArtworks";
-import { toast } from "@/hooks/use-toast";
 
 interface ImageWithFallbackProps {
-  src: string;
-  alt: string;
-  artworkId: string;
-  artworkName: string;
-  onImageUpdated?: () => void;
+  imageUrl: string;
+  altText: string;
   className?: string;
+  artworkId?: string;
+  onImageUpdated?: (artworkId: string, imageUrl: string) => void;
 }
 
 const ImageWithFallback = ({
-  src,
-  alt,
-  artworkId,
-  artworkName,
-  onImageUpdated,
+  imageUrl,
+  altText,
   className = "",
+  artworkId,
+  onImageUpdated,
 }: ImageWithFallbackProps) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [error, setError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const { uploadImage, uploading } = useImageUpload();
-  const updateArtwork = useUpdateArtwork();
+
+  // Reset error state when imageUrl changes
+  useEffect(() => {
+    setError(false);
+  }, [imageUrl]);
 
   const handleImageError = () => {
-    console.error("Image failed to load:", src);
-    setImageError(true);
-    setImageLoading(false);
+    setError(true);
   };
 
-  const handleImageLoad = () => {
-    setImageLoading(false);
-    setImageError(false);
-  };
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !artworkId) return;
 
-  const handleFileSelect = async (file: File) => {
     try {
-      console.log("Uploading new image for artwork:", artworkId);
+      const file = e.target.files[0];
+      const newImageUrl = await uploadImage(file);
 
-      // Upload the image first
-      const uploadedUrl = await uploadImage(file);
-
-      if (uploadedUrl) {
-        console.log("Image uploaded successfully:", uploadedUrl);
-
-        // Update the artwork with the new image URL
-        await updateArtwork.mutateAsync({
-          id: artworkId,
-          imageUrl: uploadedUrl,
-        });
-
-        toast({
-          title: "Succès",
-          description: "Image mise à jour avec succès!",
-        });
-
-        // Reset states
-        setImageError(false);
-        setIsDialogOpen(false);
-
-        // Notify parent component
-        onImageUpdated?.();
+      if (newImageUrl && onImageUpdated) {
+        onImageUpdated(artworkId, newImageUrl);
       }
+
+      setError(false);
     } catch (error) {
-      console.error("Error updating artwork image:", error);
-      toast({
-        title: "Erreur",
-        description: "Échec de la mise à jour de l'image. Veuillez réessayer.",
-        variant: "destructive",
-      });
+      console.error("Failed to upload image:", error);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
-  };
-
-  const handleRetryLoad = () => {
-    setImageError(false);
-    setImageLoading(true);
-    // Force reload by adding timestamp
-    const img = new Image();
-    img.onload = handleImageLoad;
-    img.onerror = handleImageError;
-    img.src = `${src}?t=${Date.now()}`;
-  };
-
-  // If image loaded successfully, show it
-  if (!imageError && !imageLoading) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        className={className}
-        onError={handleImageError}
-        onLoad={handleImageLoad}
-      />
-    );
-  }
-
-  // If image is loading, show skeleton
-  if (imageLoading && !imageError) {
-    return (
-      <div
-        className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}
-      >
-        <ImageIcon className="h-8 w-8 text-gray-400" />
-        <img
-          src={src}
-          alt={alt}
-          className="hidden"
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-        />
-      </div>
-    );
-  }
-
-  // If image failed to load, show fallback with options
-  return (
-    <div
-      className={`${className} bg-gradient-to-br from-red-50 to-orange-50 border-2 border-dashed border-red-200 flex flex-col items-center justify-center relative group`}
-    >
-      <div className="text-center p-4">
-        <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-        <p className="text-sm text-red-600 font-medium mb-2">Image manquante</p>
-        <p className="text-xs text-gray-500 mb-3">
-          Le fichier image a été supprimé du serveur
-        </p>
-
-        <div className="flex flex-col space-y-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleRetryLoad}
-            className="text-xs hover:bg-blue-50"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Réessayer
-          </Button>
-
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                className="text-xs bg-purple-600 hover:bg-purple-700"
-              >
-                <Upload className="h-3 w-3 mr-1" />
-                Télécharger
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Remplacer l'image manquante</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="text-sm text-gray-600">
-                  <p>
-                    <strong>Œuvre:</strong> {artworkName}
-                  </p>
-                  <p>
-                    <strong>ID:</strong> {artworkId}
-                  </p>
-                  <p className="text-red-600 mt-2">
-                    L'image de cette œuvre est manquante. Veuillez télécharger
-                    une nouvelle image.
-                  </p>
-                </div>
-
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Cliquez pour sélectionner une image
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, GIF jusqu'à 10MB
-                  </p>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={uploading || updateArtwork.isPending}
-                />
-
-                {(uploading || updateArtwork.isPending) && (
-                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                    <span>
-                      {uploading ? "Téléchargement..." : "Mise à jour..."}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="flex-1"
-                    disabled={uploading || updateArtwork.isPending}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1"
-                    disabled={uploading || updateArtwork.isPending}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Choisir image
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+  // Placeholder component when image fails to load or no image URL
+  const renderPlaceholder = () => (
+    <div className="w-full h-full bg-gradient-to-br from-purple-100 to-blue-100 flex flex-col items-center justify-center">
+      {artworkId ? (
+        <>
+          <div className="text-center text-gray-500 mb-2">
+            <div className="text-3xl mb-1">🖼️</div>
+            <div className="text-sm">Image non disponible</div>
+          </div>
+          <label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={uploading}
+              className="mt-2 text-xs bg-white/80 hover:bg-white"
+            >
+              <UploadIcon className="h-3 w-3 mr-1" />
+              {uploading ? "Chargement..." : "Ajouter une image"}
+            </Button>
+          </label>
+        </>
+      ) : (
+        <div className="text-center text-gray-500">
+          <div className="text-3xl mb-1">🎨</div>
+          <div className="text-sm">Image non disponible</div>
         </div>
-      </div>
+      )}
     </div>
+  );
+
+  // If artworkId exists, this is editable with hover controls
+  const renderEditableImage = () => (
+    <div
+      className="relative w-full h-full"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <img
+        src={imageUrl}
+        alt={altText}
+        className={`w-full h-full object-cover ${className}`}
+        onError={handleImageError}
+      />
+      {isHovered && artworkId && (
+        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity duration-200">
+          <label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={uploading}
+              className="bg-white/90 hover:bg-white text-sm"
+            >
+              <UploadIcon className="h-4 w-4 mr-1" />
+              {uploading ? "Uploading..." : "Change Image"}
+            </Button>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+
+  if (error || !imageUrl) {
+    return renderPlaceholder();
+  }
+
+  return artworkId ? (
+    renderEditableImage()
+  ) : (
+    <img
+      src={imageUrl}
+      alt={altText}
+      className={`w-full h-full object-cover ${className}`}
+      onError={handleImageError}
+    />
   );
 };
 

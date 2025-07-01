@@ -345,100 +345,114 @@ export interface SearchResults {
   users?: User[];
 }
 
-// Enhanced API endpoints
-export const api = {
-  // Health check
-  health: () => apiClient.get('/health'),
-  
-  // Test endpoints
-  test: () => apiClient.get('/health'), // Use health as test endpoint
-  testConnection: () => apiClient.checkHealth(),
-
-  // Artworks
-  artworks: {
-    getAll: (searchTerm?: string) => {
-      const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
-      return apiClient.get(`/artworks${params}`);
-    },
-    getById: (id: string) => apiClient.get(`/artworks/${id}`),
-    create: (artwork: Partial<Artwork>) => apiClient.post('/artworks', artwork),
-    update: (id: string, artwork: Partial<Artwork>) => apiClient.put(`/artworks/${id}`, artwork),
-    delete: (id: string) => apiClient.delete(`/artworks/${id}`),
+// API endpoints for Categories
+const categoriesApi = {
+  getAll: async () => {
+    return await apiClient.get('/categories');
   },
-
-  // Categories
-  categories: {
-    getAll: () => apiClient.get('/categories'),
-    getById: (id: string) => apiClient.get(`/categories/${id}`),
-    create: (category: Partial<Category>) => apiClient.post('/categories', category),
-    update: (id: string, category: Partial<Category>) => apiClient.put(`/categories/${id}`, category),
-    delete: (id: string) => apiClient.delete(`/categories/${id}`),
-    moveArtworks: (fromId: string, toId: string) => apiClient.post(`/categories/${fromId}/move-artworks/${toId}`),
+  getById: async (id: string) => {
+    return await apiClient.get(`/categories/${id}`);
   },
-
-  // Users (Admin access)
-  users: {
-    getAll: () => apiClient.get('/users'),
-    getById: (id: string) => apiClient.get(`/users/${id}`),
-    update: (id: string, user: Partial<User>) => apiClient.put(`/users/${id}`, user),
-    delete: (id: string) => apiClient.delete(`/users/${id}`),
+  create: async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+    return await apiClient.post('/categories', category);
   },
-
-  // Orders
-  orders: {
-    getAll: () => apiClient.get('/orders'),
-    getById: (id: string) => apiClient.get(`/orders/${id}`),
-    create: (order: Partial<Order>) => apiClient.post('/orders', order),
-    update: (id: string, order: Partial<Order>) => apiClient.put(`/orders/${id}`, order),
-    delete: (id: string) => apiClient.delete(`/orders/${id}`),
+  update: async (id: string, category: Partial<Omit<Category, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    return await apiClient.put(`/categories/${id}`, category);
   },
+  delete: async (id: string) => {
+    return await apiClient.delete(`/categories/${id}`);
+  }
+};
 
-  // Customers
-  customers: {
-    getAll: () => apiClient.get('/customers'),
-    getById: (id: string) => apiClient.get(`/customers/${id}`),
-    create: (customer: Partial<Customer>) => apiClient.post('/customers', customer),
-    update: (id: string, customer: Partial<Customer>) => apiClient.put(`/customers/${id}`, customer),
-    delete: (id: string) => apiClient.delete(`/customers/${id}`),
+// API endpoints for Artworks
+const artworksApi = {
+  getAll: async (queryParams: string = '') => {
+    const endpoint = queryParams ? `/artworks?${queryParams}` : '/artworks';
+    return await apiClient.get(endpoint, 1);
   },
-
-  // Inquiries
-  inquiries: {
-    getAll: () => apiClient.get('/inquiries'),
-    getById: (id: string) => apiClient.get(`/inquiries/${id}`),
-    create: (inquiry: Partial<Inquiry>) => apiClient.post('/inquiries', inquiry),
-    update: (id: string, inquiry: Partial<Inquiry>) => apiClient.put(`/inquiries/${id}`, inquiry),
-    delete: (id: string) => apiClient.delete(`/inquiries/${id}`),
+  getById: async (id: string) => {
+    return await apiClient.get(`/artworks/${id}`);
   },
-
-  // Dashboard
-  dashboard: {
-    getStats: () => apiClient.get('/dashboard/stats'),
-    getActivity: () => apiClient.get('/dashboard/activity'),
+  create: async (artwork: any) => {
+    return await apiClient.post('/artworks', artwork);
   },
-
-  // Search
-  search: (query: string, type?: 'artworks' | 'categories' | 'users') => {
-    const params = new URLSearchParams({ q: query });
-    if (type) params.append('type', type);
-    return apiClient.get(`/search?${params.toString()}`);
+  update: async (id: string, artwork: any) => {
+    return await apiClient.put(`/artworks/${id}`, artwork);
   },
+  delete: async (id: string) => {
+    return await apiClient.delete(`/artworks/${id}`);
+  }
+};
 
-  // Authentication
+// Comprehensive API object
+const api = {
+  // Auth endpoints
   auth: {
-    register: (userData: { 
-      firstName: string; 
-      lastName: string; 
-      email: string; 
-      password: string; 
-      phone?: string; 
-      dateOfBirth?: string; 
-    }) => apiClient.post('/auth/register', userData),
-    login: (credentials: { email: string; password: string }) => 
-      apiClient.post('/auth/login', credentials),
-    logout: () => apiClient.post('/auth/logout'),
-    me: () => apiClient.get('/auth/me'),
+    login: async (credentials: { email: string; password: string }) => {
+      return await apiClient.post('/admin/login', credentials);
+    },
+    register: async (userData: any) => {
+      return await apiClient.post('/admin/register', userData);
+    },
+    forgotPassword: async (email: string) => {
+      return await apiClient.post('/admin/forgot-password', { email });
+    },
+    resetPassword: async (data: { token: string; password: string }) => {
+      return await apiClient.post('/admin/reset-password', data);
+    },
+    logout: async () => {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('userToken');
+    }
   },
+  
+  // Category management
+  categories: categoriesApi,
+  
+  // Artwork management
+  artworks: artworksApi,
+  
+  // User management
+  users: {
+    getAll: async (page = 1, limit = 10) => {
+      return await apiClient.get(`/users?page=${page}&limit=${limit}`);
+    },
+    getById: async (id: string) => {
+      return await apiClient.get(`/users/${id}`);
+    },
+    create: async (user: any) => {
+      return await apiClient.post('/users', user);
+    },
+    update: async (id: string, user: any) => {
+      return await apiClient.put(`/users/${id}`, user);
+    },
+    delete: async (id: string) => {
+      return await apiClient.delete(`/users/${id}`);
+    }
+  },
+  
+  // Dashboard stats
+  stats: {
+    getDashboard: async () => {
+      return await apiClient.get('/admin/stats');
+    }
+  },
+  
+  // Upload endpoints
+  uploads: {
+    uploadImage: async (formData: FormData) => {
+      const headers = { 'Content-Type': 'multipart/form-data' };
+      return await apiClient.request('/uploads/image', { method: 'POST', body: formData, headers });
+    }
+  },
+  
+  // Server health check
+  health: {
+    check: async () => {
+      return await apiClient.checkHealth();
+    },
+    getStatus: () => apiClient.getServerStatus()
+  }
 };
 
 export default api; 

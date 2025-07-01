@@ -1,45 +1,32 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import ArtworkList from "@/components/art-management/ArtworkList";
 import CategoryManager from "@/components/art-management/CategoryManager";
 import ArtworkForm from "@/components/art-management/ArtworkForm";
 import { useCategories } from "@/hooks/useCategories";
-import { useArtworks } from "@/hooks/useArtworks";
 import { ArtworkWithCategory } from "@/types/database";
 
 const ArtManagement = () => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [isArtworkFormOpen, setIsArtworkFormOpen] = useState(false);
   const [editingArtwork, setEditingArtwork] =
     useState<ArtworkWithCategory | null>(null);
 
   const { data: categories = [], isLoading: categoriesLoading } =
     useCategories();
-  const {
-    data: artworks = [],
-    isLoading: artworksLoading,
-    refetch: refetchArtworks,
-  } = useArtworks(searchTerm);
-
-  const handleEditArtwork = (artwork: ArtworkWithCategory) => {
-    setEditingArtwork(artwork);
-    setIsArtworkFormOpen(true);
-  };
 
   const handleCloseForm = () => {
     setIsArtworkFormOpen(false);
     setEditingArtwork(null);
   };
 
-  if (categoriesLoading || artworksLoading) {
+  if (categoriesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50/30 p-8 flex items-center justify-center">
         <div className="flex items-center space-x-2">
           <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-          <span className="text-lg text-gray-600">Loading...</span>
+          <span className="text-lg text-gray-600">Loading categories...</span>
         </div>
       </div>
     );
@@ -87,22 +74,7 @@ const ArtManagement = () => {
             </TabsList>
 
             <TabsContent value="artworks" className="space-y-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search artwork by name, description, or 'ELOUARATE ART'..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                />
-              </div>
-
-              <ArtworkList
-                artworks={artworks}
-                categories={categories}
-                onEdit={handleEditArtwork}
-                onImageUpdated={() => refetchArtworks()}
-              />
+              <ArtworkList categories={categories} />
             </TabsContent>
 
             <TabsContent value="categories">

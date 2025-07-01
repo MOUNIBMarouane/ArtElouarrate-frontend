@@ -1,0 +1,15 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm ci --include=optional && npm run build"
+
+[deploy]
+startCommand = "npm run preview"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+
+[env]
+NODE_ENV = "production"
+NODE_VERSION = "18"
+
+[networking]
+serviceDomain = "artelouarrate-frontend"

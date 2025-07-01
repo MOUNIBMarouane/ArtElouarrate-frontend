@@ -6,32 +6,42 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await api.categories.getAll();
-      console.log('🔍 useCategories - API Response:', response);
-      
-      // Handle different response structures from backend
-      let categories = [];
-      if (response.data?.categories) {
-        // Structure: { data: { categories: [...] } }
-        categories = response.data.categories;
-      } else if (Array.isArray(response.data)) {
-        // Structure: { data: [...] }
-        categories = response.data;
-      } else if (response.success && Array.isArray(response.data)) {
-        // Structure: { success: true, data: [...] }
-        categories = response.data;
-      } else if (Array.isArray(response)) {
-        // Direct array
-        categories = response;
+      try {
+        const response = await api.categories.getAll();
+        console.log('🔍 useCategories - API Response:', response);
+        
+        // Handle different response structures from backend
+        let categories = [];
+        if (response.data?.categories) {
+          categories = response.data.categories;
+        } else if (Array.isArray(response.data)) {
+          categories = response.data;
+        } else if (response.success && Array.isArray(response.data)) {
+          categories = response.data;
+        } else if (Array.isArray(response)) {
+          categories = response;
+        }
+        
+        // Sort categories by sortOrder and then by name
+        categories.sort((a, b) => {
+          if (a.sortOrder !== b.sortOrder) {
+            return a.sortOrder - b.sortOrder;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        
+        console.log('🔍 Processed categories:', categories);
+        return categories as Category[];
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        throw error;
       }
-      
-      console.log('🔍 Processed categories:', categories);
-      return categories as Category[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
     refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 };
 
@@ -44,17 +54,23 @@ export const useAddCategory = () => {
       const response = await api.categories.create(category);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Optimistic update to prevent full refetch
+      queryClient.setQueryData(['categories'], (oldData: Category[] = []) => {
+        return [...oldData, data as Category];
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      
       toast({
         title: "Category created",
         description: "New category has been successfully added.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to create category. Please try again.",
+        description: error?.message || "Failed to create category. Please try again.",
         variant: "destructive",
       });
       console.error('Error creating category:', error);
@@ -69,19 +85,27 @@ export const useUpdateCategory = () => {
   return useMutation({
     mutationFn: async ({ id, category }: { id: string; category: Omit<Category, 'id' | 'created_at' | 'updated_at'> }) => {
       const response = await api.categories.update(id, category);
-      return response.data;
+      return { id, ...response.data };
     },
-    onSuccess: () => {
+    onSuccess: (updatedCategory) => {
+      // Optimistic update to prevent full refetch
+      queryClient.setQueryData(['categories'], (oldData: Category[] = []) => {
+        return oldData.map(category => 
+          category.id === updatedCategory.id ? { ...category, ...updatedCategory } : category
+        );
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      
       toast({
         title: "Category updated",
         description: "Category has been successfully updated.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to update category. Please try again.",
+        description: error?.message || "Failed to update category. Please try again.",
         variant: "destructive",
       });
       console.error('Error updating category:', error);
@@ -96,16 +120,38 @@ export const useDeleteCategory = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await api.categories.delete(id);
-      return response;
+      return { id, ...response };
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['categories'] });
+      
+      // Snapshot previous value
+      const previousCategories = queryClient.getQueryData<Category[]>(['categories']);
+      
+      // Optimistically update categories
+      queryClient.setQueryData(['categories'], (oldData: Category[] = []) => {
+        return oldData.filter(category => category.id !== id);
+      });
+      
+      return { previousCategories };
+    },
+    onSuccess: (_, id) => {
+      // We already optimistically updated, so just make sure the data is fresh
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['artworks'] }); // Refresh artworks as they might be affected
+      
       toast({
         title: "Category deleted",
         description: "Category has been successfully removed.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context: any) => {
+      // Restore previous state if there was an error
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['categories'], context.previousCategories);
+      }
+      
       let errorMessage = "Failed to delete category. Please try again.";
       
       // Extract specific error message from the API response
