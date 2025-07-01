@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://artelouarrate-production.up.railway.app/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Connection status tracking
 let isServerOnline = true;

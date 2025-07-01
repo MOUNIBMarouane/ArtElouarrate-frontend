@@ -33,7 +33,7 @@ const FacebookLogin: React.FC<FacebookLoginProps> = ({
     if (!window.FB) {
       window.fbAsyncInit = function () {
         window.FB.init({
-          appId: process.env.REACT_APP_FACEBOOK_APP_ID || "1234567890123456", // Replace with your Facebook App ID
+          appId: import.meta.env.VITE_FACEBOOK_APP_ID || "1234567890123456", // Replace with your Facebook App ID
           cookie: true,
           xfbml: true,
           version: "v18.0",
