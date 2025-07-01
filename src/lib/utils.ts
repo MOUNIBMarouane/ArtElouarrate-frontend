@@ -14,9 +14,12 @@ export function getImageUrl(relativeUrl: string | undefined | null): string {
   
   // If it's a relative URL starting with /, prepend backend URL
   if (relativeUrl.startsWith('/')) {
-    return `https://artelouarrate-production.up.railway.app${relativeUrl}`;
+    // Use environment variable or fallback to localhost for development
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    return `${backendUrl}${relativeUrl}`;
   }
   
   // If it's just a filename, prepend full uploads path
-  return `https://artelouarrate-production.up.railway.app/uploads/${relativeUrl}`;
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+  return `${backendUrl}/uploads/${relativeUrl}`;
 }

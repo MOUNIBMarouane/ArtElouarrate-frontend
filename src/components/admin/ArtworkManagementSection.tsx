@@ -25,7 +25,17 @@ import { Category } from "@/types/database";
 import { getImageUrl } from "@/lib/utils";
 
 interface ArtworkManagementSectionProps {
-  artworks: ArtworkWithCategory[];
+  artworks:
+    | {
+        artworks: ArtworkWithCategory[];
+        pagination?: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
+      }
+    | ArtworkWithCategory[];
   categories: Category[];
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -42,7 +52,12 @@ const ArtworkManagementSection = ({
     useState<ArtworkWithCategory | null>(null);
   const deleteArtwork = useDeleteArtwork();
 
-  const filteredArtworks = artworks.filter(
+  // Handle both new and old data structure
+  const artworksArray: ArtworkWithCategory[] = Array.isArray(artworks)
+    ? artworks
+    : artworks.artworks || [];
+
+  const filteredArtworks = artworksArray.filter(
     (artwork) =>
       artwork.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       artwork.category?.name
@@ -70,10 +85,13 @@ const ArtworkManagementSection = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "available":
+      case "AVAILABLE":
         return "bg-green-100 text-green-800";
       case "sold":
+      case "SOLD":
         return "bg-red-100 text-red-800";
       case "reserved":
+      case "RESERVED":
         return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -130,56 +148,72 @@ const ArtworkManagementSection = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredArtworks.map((artwork) => (
-                  <TableRow key={artwork.id}>
-                    <TableCell>
-                      <img
-                        src={getImageUrl(artwork.images?.[0]?.url)}
-                        alt={artwork.name}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {artwork.name}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className="text-white"
-                        style={{
-                          backgroundColor: artwork.category?.color || "#8B5CF6",
-                        }}
-                      >
-                        {artwork.category?.name}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>${artwork.price}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(artwork.status)}>
-                        {artwork.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{artwork.year}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditArtwork(artwork)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteArtwork(artwork.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {filteredArtworks.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      No artworks found matching your search.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredArtworks.map((artwork) => (
+                    <TableRow key={artwork.id}>
+                      <TableCell>
+                        <img
+                          src={artwork.images?.[0]?.url || ""}
+                          alt={artwork.name}
+                          className="w-16 h-16 object-cover rounded-lg"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "/placeholder.svg";
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {artwork.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className="text-white"
+                          style={{
+                            backgroundColor:
+                              artwork.category?.color || "#8B5CF6",
+                          }}
+                        >
+                          {artwork.category?.name || "Uncategorized"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>${artwork.price}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(artwork.status)}>
+                          {artwork.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{artwork.year}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditArtwork(artwork)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteArtwork(artwork.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

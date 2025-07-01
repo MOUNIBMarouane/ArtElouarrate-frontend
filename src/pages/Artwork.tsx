@@ -114,10 +114,15 @@ const Artwork = () => {
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
 
   const {
-    data: artworks,
+    data: artworksData,
     isLoading: artworksLoading,
     error: artworksError,
-  } = useArtworks(searchTerm);
+  } = useArtworks({ searchTerm });
+
+  // Handle both old array format and new paginated object format
+  const artworks = Array.isArray(artworksData)
+    ? artworksData
+    : artworksData?.artworks || [];
   const { data: categories, isLoading: categoriesLoading } = useCategories();
 
   // Handle URL parameters for category filtering

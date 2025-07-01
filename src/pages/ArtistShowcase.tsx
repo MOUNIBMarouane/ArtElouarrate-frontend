@@ -19,8 +19,14 @@ const ArtistShowcase = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
-  const { data: artworks = [], isLoading: artworksLoading } =
-    useArtworks(searchTerm);
+  const { data: artworksData, isLoading: artworksLoading } = useArtworks({
+    searchTerm,
+  });
+
+  // Handle both old array format and new paginated object format
+  const artworks = Array.isArray(artworksData)
+    ? artworksData
+    : artworksData?.artworks || [];
   const { data: categories = [] } = useCategories();
 
   const filteredArtworks = artworks.filter((artwork) => {

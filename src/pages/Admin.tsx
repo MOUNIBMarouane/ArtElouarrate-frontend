@@ -69,8 +69,14 @@ const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
 
-  const { data: artworks = [], isLoading: artworksLoading } =
-    useArtworks(searchTerm);
+  const { data: artworksData, isLoading: artworksLoading } = useArtworks({
+    searchTerm,
+  });
+
+  // Handle both old array format and new paginated object format
+  const artworks = Array.isArray(artworksData)
+    ? artworksData
+    : artworksData?.artworks || [];
   const { data: categories = [], isLoading: categoriesLoading } =
     useCategories();
 

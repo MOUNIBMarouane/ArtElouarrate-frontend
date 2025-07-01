@@ -34,7 +34,8 @@ export const useImageUpload = () => {
       
       console.log('useImageUpload: Token found:', !!token, 'artworkId:', artworkId);
 
-      const response = await fetch('https://artelouarrate-production.up.railway.app/api/upload/image', {
+      // Use the API client for consistency  
+      const response = await fetch('/api/upload/image', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -53,15 +54,19 @@ export const useImageUpload = () => {
       const result = await response.json();
       console.log('useImageUpload: Upload response:', result);
 
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully!",
-      });
+      if (result.success && result.data) {
+        toast({
+          title: "Success",
+          description: "Image uploaded successfully!",
+        });
 
-      // Return the relative URL (backend now stores images in database)
-      const imageUrl = result.data.url;
-      console.log('useImageUpload: Returning image URL:', imageUrl);
-      return imageUrl;
+        // Return the URL from the response
+        const imageUrl = result.data.url;
+        console.log('useImageUpload: Returning image URL:', imageUrl);
+        return imageUrl;
+      } else {
+        throw new Error(result.message || 'Upload failed');
+      }
     } catch (error) {
       console.error('useImageUpload: Error uploading image:', error);
       toast({
@@ -84,7 +89,7 @@ export const useImageUpload = () => {
       const userToken = localStorage.getItem('userToken');
       const token = adminToken || userToken;
 
-      const response = await fetch(`https://artelouarrate-production.up.railway.app/api/upload/image/${imageId}`, {
+      const response = await fetch(`/api/upload/image/${imageId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -127,7 +132,7 @@ export const useImageUpload = () => {
       const userToken = localStorage.getItem('userToken');
       const token = adminToken || userToken;
 
-      const response = await fetch(`https://artelouarrate-production.up.railway.app/api/upload/image/${imageId}`, {
+      const response = await fetch(`/api/upload/image/${imageId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

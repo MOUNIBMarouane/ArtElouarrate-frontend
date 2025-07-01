@@ -158,15 +158,16 @@ const ImageUpload = ({
             crossOrigin="anonymous"
             onError={(e) => {
               console.error("Image failed to load:", preview);
-              // Try loading through the API endpoint if direct upload fails
+              // Try loading with different path if the first attempt fails
               const target = e.target as HTMLImageElement;
               if (
                 preview &&
                 preview.includes("/uploads/") &&
-                !target.src.includes("/api/images/")
+                !target.src.includes("localhost")
               ) {
+                // Try loading from localhost for development
                 const filename = preview.split("/").pop();
-                target.src = `https://artelouarrate-production.up.railway.app/api/images/${filename}`;
+                target.src = `http://localhost:3000/uploads/${filename}`;
               }
             }}
           />

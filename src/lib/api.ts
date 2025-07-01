@@ -17,7 +17,8 @@ const apiClient = {
     
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        // Only set Content-Type if body is not FormData
+        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
@@ -441,8 +442,8 @@ const api = {
   // Upload endpoints
   uploads: {
     uploadImage: async (formData: FormData) => {
-      const headers = { 'Content-Type': 'multipart/form-data' };
-      return await apiClient.request('/uploads/image', { method: 'POST', body: formData, headers });
+      // Don't set Content-Type header for FormData - let browser set it with boundary
+      return await apiClient.request('/upload/image', { method: 'POST', body: formData });
     }
   },
   

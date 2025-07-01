@@ -8,7 +8,12 @@ import { getImageUrl } from "@/lib/utils";
 import ImageWithFallbackPublic from "@/components/ImageWithFallbackPublic";
 
 const FeaturedArtworks = () => {
-  const { data: artworks = [] } = useArtworks("");
+  const { data: artworksData } = useArtworks();
+
+  // Handle both old array format and new paginated object format
+  const artworks = Array.isArray(artworksData)
+    ? artworksData
+    : artworksData?.artworks || [];
 
   // Get featured artworks (first 3 available ones)
   const featuredArtworks = artworks

@@ -15,7 +15,12 @@ const HorizontalCategoriesSection = () => {
 
   const { data: categories = [], isLoading: categoriesLoading } =
     useCategories();
-  const { data: artworks = [], isLoading: artworksLoading } = useArtworks();
+  const { data: artworksData, isLoading: artworksLoading } = useArtworks();
+
+  // Handle both old array format and new paginated object format
+  const artworks = Array.isArray(artworksData)
+    ? artworksData
+    : artworksData?.artworks || [];
 
   // Group artworks by category
   const artworksByCategory = artworks.reduce((acc, artwork) => {
@@ -26,7 +31,7 @@ const HorizontalCategoriesSection = () => {
       acc[artwork.category.id].push(artwork);
     }
     return acc;
-  }, {} as Record<string, typeof artworks>);
+  }, {} as Record<string, any[]>);
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {

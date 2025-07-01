@@ -23,7 +23,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
     try {
       console.log("🔍 Checking server connection...");
-      const healthResponse = await api.health();
+      const healthResponse = await api.health.check();
       console.log("✅ Server connection successful:", healthResponse);
 
       setIsOnline(true);
@@ -59,7 +59,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
     if (isOnline === true) {
       return (
-        <Badge variant="success" className="gap-2 bg-green-100 text-green-800">
+        <Badge variant="default" className="gap-2 bg-green-100 text-green-800">
           <CheckCircle className="h-3 w-3" />
           Connected
         </Badge>
