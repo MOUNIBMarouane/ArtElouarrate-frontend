@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node start-frontend.js",
     "dev": "vite --port 8080",
-    "build": "vite build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --port $PORT --host 0.0.0.0",
+    "postinstall": "npx update-browserslist-db@latest || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
