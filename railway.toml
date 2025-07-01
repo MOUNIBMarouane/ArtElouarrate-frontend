@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "bun install && bun run build:railway"
 
 [deploy]
-startCommand = "bun run preview"
+startCommand = "npm run preview"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
