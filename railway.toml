@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "bun install && bun run build:railway"
 
 [deploy]
-startCommand = "npm run preview"
+startCommand = "npx vite preview --port $PORT --host 0.0.0.0"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
