@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: 8080,
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'https://artelouarate-backend-production.up.railway.app',
@@ -27,11 +27,13 @@ export default defineConfig(({ mode }) => ({
         },
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'https://artelouarate-backend-production.up.railway.app',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
+    // Middleware for client-side routing
+    middlewareMode: false,
   },
   build: {
     target: 'esnext',
@@ -66,5 +68,9 @@ export default defineConfig(({ mode }) => ({
     // Define global constants
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '2.0.0'),
     __API_URL__: JSON.stringify(process.env.VITE_API_URL || 'https://artelouarate-backend-production.up.railway.app')
+  },
+  preview: {
+    port: 8080,
+    host: '0.0.0.0'
   }
 }));
