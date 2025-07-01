@@ -1,18 +1,17 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build:railway"
+buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "npm run preview"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
 
 [env]
 NODE_ENV = "production"
-NODE_VERSION = "18"
-NODE_OPTIONS = "--max-old-space-size=4096"
+PORT = "$PORT"
+VITE_API_URL = "https://artelouarate-backend-production.up.railway.app"
 
 [networking]
 serviceDomain = "artelouarrate-frontend"
