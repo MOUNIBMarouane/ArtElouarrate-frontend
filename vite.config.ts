@@ -6,13 +6,25 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
-    port: 8080,
+    host: "0.0.0.0",
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'https://artelouarate-backend-production.up.railway.app',
         changeOrigin: true,
-        secure: false,
+        secure: true,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
       },
       '/uploads': {
         target: 'http://localhost:3000',
@@ -25,12 +37,14 @@ export default defineConfig(({ mode }) => ({
     target: 'esnext',
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
+    outDir: 'dist',
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
           router: ['react-router-dom'],
+          ui: ['@radix-ui/react-avatar', '@radix-ui/react-button', '@radix-ui/react-dialog']
         },
       },
     },
@@ -45,4 +59,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom']
+  },
+  define: {
+    // Define global constants
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '2.0.0'),
+    __API_URL__: JSON.stringify(process.env.VITE_API_URL || 'https://artelouarate-backend-production.up.railway.app')
+  }
 }));

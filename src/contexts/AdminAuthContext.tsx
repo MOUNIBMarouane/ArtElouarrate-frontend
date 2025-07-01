@@ -57,7 +57,10 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
           setAdmin(userData);
 
           // Verify token is still valid
-          await checkAuth();
+          const isValid = await checkAuth();
+          if (!isValid) {
+            logout();
+          }
         }
       } catch (error) {
         console.error("Admin auth initialization failed:", error);
@@ -76,6 +79,8 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
       const API_BASE =
         import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      console.log(`🔐 Attempting admin login to: ${API_BASE}/admin/login`);
+
       const response = await fetch(`${API_BASE}/admin/login`, {
         method: "POST",
         headers: {
@@ -84,29 +89,59 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      console.log(`📡 Login response status: ${response.status}`);
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        let errorMessage = "Login failed";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+          console.error("❌ Login error response:", errorData);
+        } catch (parseError) {
+          console.error("❌ Failed to parse error response:", parseError);
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      if (data.success && data.data) {
+      const data = await response.json();
+      console.log("📦 Login response data:", data);
+
+      // Handle the response structure properly
+      if (data.success) {
+        // Check if we have the expected data structure
+        if (!data.data) {
+          console.error(
+            "❌ Invalid response structure - missing data object:",
+            data
+          );
+          throw new Error("Invalid response from server");
+        }
+
+        const { admin: adminData, tokens } = data.data;
+
+        if (!adminData || !tokens) {
+          console.error(
+            "❌ Invalid response structure - missing admin or tokens:",
+            data.data
+          );
+          throw new Error("Invalid response from server");
+        }
+
         // Store authentication data
         localStorage.setItem("isAdminAuthenticated", "true");
-        localStorage.setItem("adminToken", data.data.tokens.accessToken);
-        localStorage.setItem(
-          "adminRefreshToken",
-          data.data.tokens.refreshToken
-        );
-        localStorage.setItem("adminUser", JSON.stringify(data.data.admin));
+        localStorage.setItem("adminToken", tokens.accessToken);
+        localStorage.setItem("adminRefreshToken", tokens.refreshToken);
+        localStorage.setItem("adminUser", JSON.stringify(adminData));
 
-        setAdmin(data.data.admin);
-        console.log("✅ Admin login successful:", data.data.admin);
+        setAdmin(adminData);
+        console.log("✅ Admin login successful:", adminData);
       } else {
-        throw new Error("Invalid response format");
+        console.error("❌ Login failed - success is false:", data);
+        throw new Error(data.message || "Login failed");
       }
     } catch (error) {
-      console.error("Admin login error:", error);
+      console.error("🚨 Admin login error:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -114,6 +149,8 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
   };
 
   const logout = (): void => {
+    console.log("🚪 Admin logout");
+
     // Clear all admin authentication data
     localStorage.removeItem("isAdminAuthenticated");
     localStorage.removeItem("adminToken");
@@ -126,12 +163,17 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
     try {
       const API_BASE =
         import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      fetch(`${API_BASE}/admin/logout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-        },
-      }).catch(console.error);
+      const token = localStorage.getItem("adminToken");
+
+      if (token) {
+        fetch(`${API_BASE}/admin/logout`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }).catch(console.error);
+      }
     } catch (error) {
       console.error("Logout API call failed:", error);
     }
@@ -157,18 +199,19 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
         body: JSON.stringify({ refreshToken }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || "Token refresh failed");
+        throw new Error("Token refresh failed");
       }
 
-      if (data.success && data.data.tokens) {
+      const data = await response.json();
+
+      if (data.success && data.data?.tokens) {
         localStorage.setItem("adminToken", data.data.tokens.accessToken);
         localStorage.setItem(
           "adminRefreshToken",
           data.data.tokens.refreshToken
         );
+        console.log("✅ Token refreshed successfully");
         return;
       }
 
@@ -203,7 +246,6 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
           await refreshToken();
           return true;
         } catch {
-          logout();
           return false;
         }
       }
