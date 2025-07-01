@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node start-frontend.js",
     "dev": "vite --port 8080",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
+    "build": "vite build",
     "build:railway": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
