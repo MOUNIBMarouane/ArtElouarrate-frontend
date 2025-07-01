@@ -9,4 +9,10 @@ registry = "https://registry.npmjs.org"
 telemetry = false
 
 # Cache configuration  
-cache = true 
+cache = true
+
+# Allow lockfile updates
+frozen = false
+
+# Exact versions for reproducible builds
+exact = true 
