@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -14,65 +15,54 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireRole,
   redirectTo = "/login",
 }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const {
+    isAuthenticated: userAuthenticated,
+    isLoading: userLoading,
+    user,
+  } = useAuth();
+  const { isAuthenticated: adminAuthenticated, isLoading: adminLoading } =
+    useAdminAuth();
   const location = useLocation();
-  const [adminAuthenticated, setAdminAuthenticated] = useState<boolean | null>(
-    null
-  );
 
-  // Check admin authentication from localStorage and verify token
-  useEffect(() => {
-    if (requireRole === "ADMIN" || location.pathname.startsWith("/admin")) {
-      const isAdminAuth =
-        localStorage.getItem("isAdminAuthenticated") === "true";
-      const adminToken = localStorage.getItem("adminToken");
-      const adminUser = localStorage.getItem("adminUser");
-
-      if (isAdminAuth && adminToken && adminUser) {
-        // Verify token with backend (optional - can be implemented later)
-        setAdminAuthenticated(true);
-      } else {
-        setAdminAuthenticated(false);
-        // Clear invalid auth data
-        localStorage.removeItem("isAdminAuthenticated");
-        localStorage.removeItem("adminToken");
-        localStorage.removeItem("adminUser");
-      }
-    } else {
-      setAdminAuthenticated(null);
-    }
-  }, [requireRole, location.pathname]);
+  // Determine if this is an admin route
+  const isAdminRoute =
+    requireRole === "ADMIN" || location.pathname.startsWith("/admin");
 
   // Show loading spinner while checking authentication
-  if (isLoading || (requireRole === "ADMIN" && adminAuthenticated === null)) {
+  if ((isAdminRoute && adminLoading) || (!isAdminRoute && userLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-300">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
   // Handle admin routes
-  if (requireRole === "ADMIN" || location.pathname.startsWith("/admin")) {
+  if (isAdminRoute) {
     if (!adminAuthenticated) {
+      console.log("🔒 Admin route access denied - redirecting to login");
       return <Navigate to="/admin/login" state={{ from: location }} replace />;
     }
+    console.log("✅ Admin route access granted");
     return <>{children}</>;
   }
 
   // Handle regular user routes
-  if (!isAuthenticated) {
+  if (!userAuthenticated) {
+    console.log("🔒 User route access denied - redirecting to login");
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
   // Check role-based access if required
   if (requireRole === "USER" && user?.role !== "USER") {
+    console.log("🔒 User role mismatch - redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
+  console.log("✅ User route access granted");
   return <>{children}</>;
 };
 

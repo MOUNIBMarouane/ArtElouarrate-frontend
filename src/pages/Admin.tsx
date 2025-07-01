@@ -55,6 +55,7 @@ import {
 import { useArtworks } from "@/hooks/useArtworks";
 import { useCategories } from "@/hooks/useCategories";
 import { useNavigate, Link } from "react-router-dom";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import StatisticsDashboard from "@/components/admin/StatisticsDashboard";
 import ArtworkManagementSection from "@/components/admin/ArtworkManagementSection";
 import CategoryManagementSection from "@/components/admin/CategoryManagementSection";
@@ -67,6 +68,7 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { logout, admin } = useAdminAuth();
   const navigate = useNavigate();
 
   const { data: artworksData, isLoading: artworksLoading } = useArtworks({
@@ -91,10 +93,7 @@ const Admin = () => {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem("isAdminAuthenticated");
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
-    navigate("/admin/login");
+    logout();
   };
 
   // Mock data for comprehensive dashboard
