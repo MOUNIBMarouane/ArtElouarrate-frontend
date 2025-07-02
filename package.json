@@ -4,8 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node start-frontend.js",
     "build": "vite build",
-    "start": "node start-frontend.js"
+    "dev": "vite",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -65,7 +68,8 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.177.0",
     "vaul": "^0.9.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
