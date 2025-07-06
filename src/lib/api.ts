@@ -3,57 +3,93 @@
  * Connects frontend to the Railway backend deployment
  */
 
-// Backend URLs - Railway production and local development
-const API_URLS = {
-  production: 'https://artelouarate-backend-production.up.railway.app',
-  development: 'http://localhost:3000',
+import type { Category, Artwork, User, ApiResponse, PaginatedResponse } from '@/types/database';
+
+// API Configuration
+export const API_CONFIG = {
+  getBaseUrl: (): string => {
+    // Check environment variable first
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+
+    // Auto-detect based on hostname
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+
+    // Default to production for Railway deployment
+    return 'https://artelouarate-backend-production.up.railway.app';
+  },
+  endpoints: {
+    // Admin
+    adminLogin: '/admin/login',
+    adminLogout: '/admin/logout',
+    adminProfile: '/admin/profile',
+    adminRefreshToken: '/admin/refresh-token',
+
+    // Categories
+    categories: '/categories',
+    category: (id: string) => `/categories/${id}`,
+
+    // Artworks
+    artworks: '/artworks',
+    artwork: (id: string) => `/artworks/${id}`,
+
+    // Users
+    users: '/users',
+    user: (id: string) => `/users/${id}`,
+
+    // Upload
+    uploadImage: '/upload/image',
+    uploadImages: '/upload/multiple',
+
+    // Health
+    health: '/health',
+    apiHealth: '/health'
+  }
 };
 
-// Determine which API URL to use
-const getApiUrl = (): string => {
-  // Check environment variable first
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  
-  // Auto-detect based on hostname
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return API_URLS.development;
-  }
-  
-  // Default to production for Railway deployment
-  return API_URLS.production;
-};
-
-const API_BASE = getApiUrl();
-
+// Initialize API base URL
+const API_BASE = API_CONFIG.getBaseUrl();
 console.log(`🔗 API Client connecting to: ${API_BASE}`);
+
+// Utility to build endpoint URLs
+const buildUrl = (endpoint: string, params?: Record<string, any>): string => {
+  let url = `${API_BASE}${endpoint}`;
+
+  if (params && Object.keys(params).length > 0) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        query.append(key, value.toString());
+      }
+    });
+    url += `?${query}`;
+  }
+
+  return url;
+};
 
 /**
  * Professional API Client with error handling and retry logic
  */
 class ApiClient {
-  private baseUrl: string;
-  private defaultHeaders: Record<string, string>;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.defaultHeaders = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-  }
-
   /**
    * Get authentication headers
    */
   private getAuthHeaders(useAdminToken = false): Record<string, string> {
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
     const tokenKey = useAdminToken ? 'adminToken' : 'userToken';
     const token = localStorage.getItem(tokenKey);
-    
+
     return token
-      ? { ...this.defaultHeaders, Authorization: `Bearer ${token}` }
-      : this.defaultHeaders;
+      ? { ...defaultHeaders, Authorization: `Bearer ${token}` }
+      : defaultHeaders;
   }
 
   /**
@@ -82,7 +118,7 @@ class ApiClient {
         localStorage.removeItem('userToken');
         localStorage.removeItem('isAdminAuthenticated');
         console.log('🔐 Cleared invalid authentication tokens');
-        
+
         if (window.location.pathname.includes('/admin')) {
           window.location.href = '/admin/login';
         }
@@ -105,7 +141,7 @@ class ApiClient {
     useAdminToken = false,
     retries = 3
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = buildUrl(endpoint);
     const headers = this.getAuthHeaders(useAdminToken);
 
     const requestOptions: RequestInit = {
@@ -149,31 +185,27 @@ class ApiClient {
   // ADMIN AUTHENTICATION API
   // =============================================================================
 
-  async adminLogin(email: string, password: string) {
-    console.log('🔐 Admin login request');
-    return this.makeRequest('/api/admin/login', {
+  async adminLogin(email: string, password: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.adminLogin, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   }
 
-  async adminLogout() {
-    console.log('🚪 Admin logout request');
-    return this.makeRequest('/api/admin/logout', {
+  async adminLogout(): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.adminLogout, {
       method: 'POST',
     }, true);
   }
 
-  async getAdminProfile() {
-    console.log('👤 Fetching admin profile');
-    return this.makeRequest('/api/admin/profile', {
+  async getAdminProfile(): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.adminProfile, {
       method: 'GET',
     }, true);
   }
 
-  async refreshAdminToken(refreshToken: string) {
-    console.log('🔄 Refreshing admin token');
-    return this.makeRequest('/api/admin/refresh-token', {
+  async refreshAdminToken(refreshToken: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.adminRefreshToken, {
       method: 'POST',
       body: JSON.stringify({ refreshToken }),
     });
@@ -183,35 +215,30 @@ class ApiClient {
   // CATEGORIES API
   // =============================================================================
 
-  async getCategories() {
-    console.log('📂 Fetching categories');
-    return this.makeRequest('/api/categories');
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    return this.makeRequest(API_CONFIG.endpoints.categories);
   }
 
-  async getCategory(id: number) {
-    console.log(`📂 Fetching category: ${id}`);
-    return this.makeRequest(`/api/categories/${id}`);
+  async getCategory(id: string): Promise<ApiResponse<Category>> {
+    return this.makeRequest(API_CONFIG.endpoints.category(id));
   }
 
-  async createCategory(categoryData: any) {
-    console.log('📂 Creating category');
-    return this.makeRequest('/api/categories', {
+  async createCategory(categoryData: Partial<Category>): Promise<ApiResponse<Category>> {
+    return this.makeRequest(API_CONFIG.endpoints.categories, {
       method: 'POST',
       body: JSON.stringify(categoryData),
     }, true);
   }
 
-  async updateCategory(id: number, categoryData: any) {
-    console.log(`📂 Updating category: ${id}`);
-    return this.makeRequest(`/api/categories/${id}`, {
+  async updateCategory(id: string, categoryData: Partial<Category>): Promise<ApiResponse<Category>> {
+    return this.makeRequest(API_CONFIG.endpoints.category(id), {
       method: 'PUT',
       body: JSON.stringify(categoryData),
     }, true);
   }
 
-  async deleteCategory(id: number) {
-    console.log(`📂 Deleting category: ${id}`);
-    return this.makeRequest(`/api/categories/${id}`, {
+  async deleteCategory(id: string): Promise<ApiResponse<Category>> {
+    return this.makeRequest(API_CONFIG.endpoints.category(id), {
       method: 'DELETE',
     }, true);
   }
@@ -220,50 +247,30 @@ class ApiClient {
   // ARTWORKS API
   // =============================================================================
 
-  async getArtworks(params: {
-    category?: number;
-    status?: string;
-    featured?: boolean;
-    limit?: number;
-    offset?: number;
-    search?: string;
-  } = {}) {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, value.toString());
-      }
-    });
-    
-    const endpoint = `/api/artworks${queryParams.toString() ? `?${queryParams}` : ''}`;
-    console.log(`🎨 Fetching artworks: ${endpoint}`);
-    return this.makeRequest(endpoint);
+  async getArtworks(params: Record<string, any> = {}): Promise<ApiResponse<Artwork[]>> {
+    return this.makeRequest(`${API_CONFIG.endpoints.artworks}${params ? '?' + new URLSearchParams(params).toString() : ''}`);
   }
 
-  async getArtwork(id: number) {
-    console.log(`🎨 Fetching artwork: ${id}`);
-    return this.makeRequest(`/api/artworks/${id}`);
+  async getArtwork(id: string): Promise<ApiResponse<Artwork>> {
+    return this.makeRequest(API_CONFIG.endpoints.artwork(id));
   }
 
-  async createArtwork(artworkData: any) {
-    console.log('🎨 Creating artwork');
-    return this.makeRequest('/api/artworks', {
+  async createArtwork(artworkData: Partial<Artwork>): Promise<ApiResponse<Artwork>> {
+    return this.makeRequest(API_CONFIG.endpoints.artworks, {
       method: 'POST',
       body: JSON.stringify(artworkData),
     }, true);
   }
 
-  async updateArtwork(id: number, artworkData: any) {
-    console.log(`🎨 Updating artwork: ${id}`);
-    return this.makeRequest(`/api/artworks/${id}`, {
+  async updateArtwork(id: string, artworkData: Partial<Artwork>): Promise<ApiResponse<Artwork>> {
+    return this.makeRequest(API_CONFIG.endpoints.artwork(id), {
       method: 'PUT',
       body: JSON.stringify(artworkData),
     }, true);
   }
 
-  async deleteArtwork(id: number) {
-    console.log(`🎨 Deleting artwork: ${id}`);
-    return this.makeRequest(`/api/artworks/${id}`, {
+  async deleteArtwork(id: string): Promise<ApiResponse<Artwork>> {
+    return this.makeRequest(API_CONFIG.endpoints.artwork(id), {
       method: 'DELETE',
     }, true);
   }
@@ -272,27 +279,57 @@ class ApiClient {
   // FILE UPLOAD API
   // =============================================================================
 
-  async uploadImage(file: File) {
-    console.log(`📸 Uploading image: ${file.name}`);
+  async uploadImage(file: File): Promise<ApiResponse<any>> {
     const formData = new FormData();
     formData.append('image', file);
 
-    return this.makeRequest('/api/upload/image', {
+    return this.makeRequest(API_CONFIG.endpoints.uploadImage, {
       method: 'POST',
       body: formData,
-      headers: this.getAuthHeaders(true), // Remove Content-Type for FormData
+      headers: {}, // Let browser set Content-Type for FormData
     }, true);
   }
 
-  async uploadImages(files: File[]) {
-    console.log(`📸 Uploading ${files.length} images`);
+  async uploadImages(files: File[]): Promise<ApiResponse<any>> {
     const formData = new FormData();
     files.forEach(file => formData.append('images', file));
 
-    return this.makeRequest('/api/upload/images', {
+    return this.makeRequest(API_CONFIG.endpoints.uploadImages, {
       method: 'POST',
       body: formData,
-      headers: this.getAuthHeaders(true), // Remove Content-Type for FormData
+      headers: {}, // Let browser set Content-Type for FormData
+    }, true);
+  }
+
+  // =============================================================================
+  // USERS API
+  // =============================================================================
+
+  async getUsers(params: Record<string, any> = {}): Promise<PaginatedResponse<User>> {
+    return this.makeRequest(`${API_CONFIG.endpoints.users}${params ? '?' + new URLSearchParams(params).toString() : ''}`, {}, true);
+  }
+
+  async getUser(id: string): Promise<ApiResponse<User>> {
+    return this.makeRequest(API_CONFIG.endpoints.user(id), {}, true);
+  }
+
+  async createUser(userData: Partial<User>): Promise<ApiResponse<User>> {
+    return this.makeRequest(API_CONFIG.endpoints.users, {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }, true);
+  }
+
+  async updateUser(id: string, userData: Partial<User>): Promise<ApiResponse<User>> {
+    return this.makeRequest(API_CONFIG.endpoints.user(id), {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    }, true);
+  }
+
+  async deleteUser(id: string): Promise<ApiResponse<User>> {
+    return this.makeRequest(API_CONFIG.endpoints.user(id), {
+      method: 'DELETE',
     }, true);
   }
 
@@ -300,85 +337,86 @@ class ApiClient {
   // HEALTH & SYSTEM API
   // =============================================================================
 
-  async getHealth() {
-    console.log('🏥 Health check');
-    return this.makeRequest('/health');
+  async getHealth(): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.health);
   }
 
-  async getApiHealth() {
-    console.log('🏥 API health check');
-    return this.makeRequest('/api/health');
+  async getApiHealth(): Promise<ApiResponse<any>> {
+    return this.makeRequest(API_CONFIG.endpoints.apiHealth);
   }
 
   // =============================================================================
   // USER AUTHENTICATION API (Future implementation)
   // =============================================================================
 
-  async userLogin(email: string, password: string) {
-    console.log('🔐 User login request');
-    return this.makeRequest('/api/auth/login', {
+  async userLogin(email: string, password: string): Promise<ApiResponse<any>> {
+    return this.makeRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   }
 
-  async userRegister(userData: any) {
-    console.log('📝 User registration request');
-    return this.makeRequest('/api/auth/register', {
+  async userRegister(userData: any): Promise<ApiResponse<any>> {
+    return this.makeRequest('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
   }
 
-  async getUserProfile() {
-    console.log('👤 Fetching user profile');
-    return this.makeRequest('/api/auth/profile', {
+  async getUserProfile(): Promise<ApiResponse<any>> {
+    return this.makeRequest('/auth/profile', {
       method: 'GET',
-    });
+    }, false);
   }
 }
 
-// Export configured API client instance
-export const api = new ApiClient(API_BASE);
+const apiClient = new ApiClient();
 
-// Export individual API modules for convenience
-export const adminApi = {
-  login: api.adminLogin.bind(api),
-  logout: api.adminLogout.bind(api),
-  getProfile: api.getAdminProfile.bind(api),
-  refreshToken: api.refreshAdminToken.bind(api),
+// Export a singleton instance
+// const api = new ApiClient(
+// );
+// Create the structured API that hooks expect
+const api = {
+  // Core methods
+  getHealth: () => apiClient.getHealth(),
+
+  // Admin methods
+  admin: {
+    login: (email: string, password: string) => apiClient.adminLogin(email, password),
+    logout: () => apiClient.adminLogout(),
+    getProfile: () => apiClient.getAdminProfile(),
+    refreshToken: (token: string) => apiClient.refreshAdminToken(token),
+  },
+
+  // Categories methods (what your hooks need)
+  categories: {
+    getAll: () => apiClient.getCategories(),
+    getById: (id: string) => apiClient.getCategory(id),
+    create: (data: any) => apiClient.createCategory(data),
+    update: (id: string, data: any) => apiClient.updateCategory(id, data),
+    delete: (id: string) => apiClient.deleteCategory(id),
+  },
+
+  // Artworks methods (what your hooks need)
+  artworks: {
+    getAll: (params?: any) => apiClient.getArtworks(params),
+    getById: (id: string) => apiClient.getArtwork(id),
+    create: (data: any) => apiClient.createArtwork(data),
+    update: (id: string, data: any) => apiClient.updateArtwork(id, data),
+    delete: (id: string) => apiClient.deleteArtwork(id),
+  },
+
+  // Upload methods
+  upload: {
+    image: (file: File) => apiClient.uploadImage(file),
+    images: (files: File[]) => apiClient.uploadImages(files),
+  },
 };
 
-export const categoriesApi = {
-  getAll: api.getCategories.bind(api),
-  getById: api.getCategory.bind(api),
-  create: api.createCategory.bind(api),
-  update: api.updateCategory.bind(api),
-  delete: api.deleteCategory.bind(api),
-};
-
-export const artworksApi = {
-  getAll: api.getArtworks.bind(api),
-  getById: api.getArtwork.bind(api),
-  create: api.createArtwork.bind(api),
-  update: api.updateArtwork.bind(api),
-  delete: api.deleteArtwork.bind(api),
-};
-
-export const uploadApi = {
-  image: api.uploadImage.bind(api),
-  images: api.uploadImages.bind(api),
-};
-
-export const healthApi = {
-  check: api.getHealth.bind(api),
-  apiCheck: api.getApiHealth.bind(api),
-};
-
-// Export default API client
+// Export the structured API
 export default api;
 
-// Test connection on module load
+// Test connection
 api.getHealth()
   .then(() => console.log('✅ Backend connection verified'))
-  .catch(() => console.warn('⚠️ Backend connection failed - check if server is running')); 
+  .catch(() => console.warn('⚠️ Backend connection failed - check if server is running'));

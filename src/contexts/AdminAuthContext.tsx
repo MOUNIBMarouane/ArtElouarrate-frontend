@@ -7,6 +7,33 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+// API configuration
+const API_CONFIG = {
+  getBaseUrl: () => {
+    // Use environment variable if available
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+
+    // Auto-detect based on hostname
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      return "http://localhost:3000";
+    }
+
+    // Default to production URL
+    return "https://artelouarate-backend-production.up.railway.app";
+  },
+  endpoints: {
+    login: "/api/admin/login",
+    logout: "/api/admin/logout",
+    profile: "/api/admin/profile",
+    refreshToken: "/api/admin/refresh-token",
+  },
+};
+
 interface AdminUser {
   id: string;
   username: string;
@@ -77,11 +104,12 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
     try {
       setIsLoading(true);
 
-      const API_BASE =
-        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      console.log(`🔐 Attempting admin login to: ${API_BASE}/admin/login`);
+      const API_BASE = API_CONFIG.getBaseUrl();
+      const loginUrl = `${API_BASE}${API_CONFIG.endpoints.login}`;
 
-      const response = await fetch(`${API_BASE}/admin/login`, {
+      console.log(`🔐 Attempting admin login to: ${loginUrl}`);
+
+      const response = await fetch(loginUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,12 +189,12 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
     // Call logout endpoint if needed
     try {
-      const API_BASE =
-        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      const API_BASE = API_CONFIG.getBaseUrl();
+      const logoutUrl = `${API_BASE}${API_CONFIG.endpoints.logout}`;
       const token = localStorage.getItem("adminToken");
 
       if (token) {
-        fetch(`${API_BASE}/admin/logout`, {
+        fetch(logoutUrl, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -184,19 +212,20 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
   const refreshToken = async (): Promise<void> => {
     try {
-      const refreshToken = localStorage.getItem("adminRefreshToken");
-      if (!refreshToken) {
+      const refreshTokenValue = localStorage.getItem("adminRefreshToken");
+      if (!refreshTokenValue) {
         throw new Error("No refresh token available");
       }
 
-      const API_BASE =
-        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      const response = await fetch(`${API_BASE}/admin/refresh-token`, {
+      const API_BASE = API_CONFIG.getBaseUrl();
+      const refreshUrl = `${API_BASE}${API_CONFIG.endpoints.refreshToken}`;
+
+      const response = await fetch(refreshUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ refreshToken: refreshTokenValue }),
       });
 
       if (!response.ok) {
@@ -230,9 +259,10 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
         return false;
       }
 
-      const API_BASE =
-        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      const response = await fetch(`${API_BASE}/admin/profile`, {
+      const API_BASE = API_CONFIG.getBaseUrl();
+      const profileUrl = `${API_BASE}${API_CONFIG.endpoints.profile}`;
+
+      const response = await fetch(profileUrl, {
         headers: {
           Authorization: `Bearer ${adminToken}`,
         },
@@ -257,18 +287,18 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
     }
   };
 
-  const value: AdminAuthContextType = {
-    admin,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    refreshToken,
-    checkAuth,
-  };
-
   return (
-    <AdminAuthContext.Provider value={value}>
+    <AdminAuthContext.Provider
+      value={{
+        admin,
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+        refreshToken,
+        checkAuth,
+      }}
+    >
       {children}
     </AdminAuthContext.Provider>
   );

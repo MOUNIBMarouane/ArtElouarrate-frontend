@@ -66,3 +66,17 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     totalPages: number;
   };
 }
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
